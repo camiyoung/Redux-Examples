@@ -18,7 +18,7 @@ function PostList() {
       <article className="post-excerpt" key={post.id}>
         <h3>{post.title}</h3>
         <div>
-          <PostAuthor userId={post.userId} />
+          <PostAuthor userId={post.user} />
           <TimeAgo timestamp={post.date} />
         </div>
         <p className="post-content">{post.content.substring(0, 100)}</p>
