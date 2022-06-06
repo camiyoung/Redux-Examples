@@ -1,46 +1,97 @@
 # Redux Essentials Tutorial Example
 
-This project contains the setup and code from the "Redux Essentials" tutorial in the Redux docs ( https://redux.js.org/tutorials/essentials/part-1-overview-concepts ).
+리덕스 공식 문서의 예제 프로젝트 실습하기
 
-The `master` branch has a single commit that already has the initial project configuration in place. You can use this to follow along with the instructions from the tutorial.
+"Redux Essentials" tutorial in the Redux docs ( https://redux.js.org/tutorials/essentials/part-1-overview-concepts ).
 
-The `tutorial-steps` branch has the actual code commits from the tutorial. You can look at these to see how the official tutorial actually implements each piece of functionality along the way.
+# Redux 핵심 part3 : Basic Redux Data Flow
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app), using the [Redux](https://redux.js.org/) and [Redux Toolkit](https://redux-toolkit.js.org/) template.
+### Redux data flow cycle
 
-> **Note**: If you are using Node 17, this project may not start correctly due to a known issue with Webpack and Node's OpenSSL changes, which causes an error message containing `ERR_OSSL_EVP_UNSUPPORTED`.  
-> You can work around this by setting a `NODE_OPTIONS=--openssl-legacy-provider` environment variable before starting the dev server.
-> Details: https://github.com/webpack/webpack/issues/14532#issuecomment-947012063
+- post 리스트는 store의 posts 의 초기값을 useSelector로 가져와서 UI를 초기화한다.
+- 새로운 포스트를 등록하면 새 포스트의 데이터를 담은 action인 postAdded를 디스패치 한다.
+- posts reducer는 postAdded 액션을 감지하고, posts배열(state)를 업데이트 한다.
+- 리덕스 store는 UI에게 state가 변경 되었다고 알린다.
+- post 리스트는 업데이트된 posts 배열을 읽고 리렌더링 한다.
 
-## Available Scripts
+## 정리
 
-In the project directory, you can run:
+### 리덕스 state는 reducer 함수들로 업데이트 된다.
 
-### `yarn start`
+- Reducer는 항상 새로운 state를 immutalbly 하게 계산한다.
+  - 기존의 state 값들을 복제하고 복제본을 수정하여서 새 state를 생성
+- Redux Toolkit의 `createSlice` 함수는 slice reducer를 만든다.
+  - slice reducer는 mutating 한 코드를 작성하면 알아서 안전하게 immutable한 업데이트로 바꿔준다.
+- Slice Reducer 함수들은 `configureStore`의 reducer필드에 작성되어야 하고 ,name 필드에 작성된 이름은 리덕스 Store에서 사용할 이름을 작성한다.
 
-Runs the app in the development mode.<br />
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+### 리액트 컴포넌트는`useSelector`훅을 사용하여 store로부터 데이터를 읽는다.
 
-The page will reload if you make edits.<br />
-You will also see any lint errors in the console.
+- Selector 함수는 전체 state객체를 인자로 받고, 값을 리턴한다.
+- Selector는 리덕스 store가 업데이트 될 때 마다 다시 실행 되어서 변경된 데이터 값을 리턴한다.
 
-### `yarn test`
+### 리액트 컴포넌트는 store의 값을 업데이트 하기 위해서 `useDispatch` 훅을 사용해서 action을 dispatch한다.
 
-Launches the test runner in the interactive watch mode.<br />
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- `createSlice` 는 slice에 등록한 reducer마다 각각 action creator 함수를 만들어준다.
+- action을 dispatch하기 위해서 `dispatch(someActionCreator())` 를 호출한다.
+- Reducer가 실행 되면 해당 action을 처리 해야 하는지 체크하고, 처리해야 한다면 새로운 state를 반환한다.
+- form 의 input value같은 임시적인 데이터는 컴포넌트 자체 state에서 보관한다.
+  - 유저의 form 입력이 다 끝나고 해당 데이터를 store에 저장해야 할 때 action을 디스패치 해서 store에 업데이트 한다.
 
-### `yarn build`
+# Redux 핵심 part4 : Using Redux Data
 
-Builds the app for production to the `build` folder.<br />
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## 정리
 
-The build is minified and the filenames include the hashes.<br />
-Your app is ready to be deployed!
+### 리액트 컴포넌트는 Redux store에서 데이터를 필요한 만큼 사용 가능하다.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- 어떠한 컴포넌트도 store의 데이터를 읽을 수 있음.
+- 어떠한 컴포넌트도 action을 디스패치 해서 state를 업데이트 할 수 있다.
+- 컴포넌트는 props,state, Redux store 값들을 결합해서 ui를 렌더링 하는데 사용할 수있다.
+- 컴포넌트들은 렌더링 할 때 정말 필요한 만큼만 데이터를 추출해야 한다.
 
-## Learn More
+### Redux action creator는 action을 prepare 할 수 있다.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+- `createSlice` 와 `createAction` 은 action payload를 리턴하는 "prepare callback"을 가질 수 있다.
+- unique 한 id나 다른 랜덤 값들은 action에 저장되어야 한다( reducer에서 계산 X)
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+```jsx
+//src/features/posts/AddPostForm.jsx
+const onSavePostClicked = () => {
+  if (title && content) {
+    dispatch(postAdded(title, content, userId)) // action의 payload 전달
+    setTitle('')
+    setContent('')
+  }
+}
+```
+
+```jsx
+// src/features/posts/postsSlice.js
+
+const postsSlice = createSlice({
+  name: 'posts',
+  initialState,
+  reducers: {
+    postAdded: {
+      reducer(state, action) {
+        state.push(action.payload)
+      },
+      prepare(title, content, userId) { // 디스패치 할 때 action으로 넘겨주는 인자를 prepare에서 받을 수 있다. 유니크 id, 랜덤 값 등 계산은 리듀서에서 하지 말고 여기서 한다.
+        return {
+          payload: {
+            id: nanoid(),
+            date: new Date().toISOString(),
+            title,
+            content,
+            user: userId,
+          },
+        }
+      },
+    },
+
+    //...
+```
+
+### Reducer는 state update logic을 포함한다.
+
+- 다음 state를 계산하기 위한 어떠한 로직이라면 Reducer에 포함 가능하다.
+- action객체는 어떤 일이 일어났는지 잘 설명되는 이름으로 작성해야 한다.
