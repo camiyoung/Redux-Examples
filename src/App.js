@@ -7,7 +7,7 @@ import {
 } from 'react-router-dom'
 
 import { Navbar } from './app/Navbar'
-import AddPostForm from './features/posts/AddPostForm'
+import { AddPostForm } from './features/posts/AddPostForm'
 import EditPostForm from './features/posts/EditPostForm'
 import PostList from './features/posts/PostList'
 import SinglePostPage from './features/posts/SinglePostPage'
