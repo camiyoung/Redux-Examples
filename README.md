@@ -95,3 +95,29 @@ const postsSlice = createSlice({
 
 - 다음 state를 계산하기 위한 어떠한 로직이라면 Reducer에 포함 가능하다.
 - action객체는 어떤 일이 일어났는지 잘 설명되는 이름으로 작성해야 한다.
+
+# Redux 핵심 part5 : Async Logic 과 Data Fetching
+
+### 재사용 가능한 Selector 작성이 가능하다
+
+- Selector는 Redux `state` 를 인자로 받고 데이터를 리턴하는 함수
+
+### 리덕스는 async 로직 처리를 위해서 미들웨어 플러그인을 사용한다.
+
+- 리덕스에서 사용하는 표준 async 미들웨어는 `redux-thunk`이고 Redux Toolkit에 내장되어있다.
+- Thunk 는 `dispatch` 와 `getState`를 인자로 받는 함수이고 async로직 처리할 때 이것들을 사용 가능하다.
+
+### API call의 로딩 상태를 추가적인 action으로 디스패치 가능하다.
+
+- 전형적인 패턴은 api call을 부르기 전을 "pending", 그리고 성공 유무에 따라 데이터를 가진 "success" 혹은 에러 정보를 가진 "faliure" 를 리턴하는 것이다.
+- 로딩 상태는 대게 열거형(enum)으로 저장 된다 (idle | loading | succeeded | failed 와 같이)
+
+### 리덕스 Toolkit은 액션을 디스패치 하는 `createAsyncThunk` 라는 함수를 갖고 있다.
+
+- `createAsyncThunk` 는 프로미스를 리턴하는 "payload creator" 를 받아서 `pending/fulfilled/reject` 액션을 자동으로 만들어준다.
+- `fetchPosts` 와 같이 생성된 action creator는 내가 리턴하는 프로미스에 기반해 액션을 디스패치 한다.
+
+- `createSlice` 안의 `extraReducers` 필드에서 프로미스에서 생성된 action 을 듣고 state를 업데이트 할 수 있다.
+- Action creator는 `extra Reducer`의 키로 자동적으로 사용된다.
+- Thunk 는 프로미스를 리턴할 수도 있다. `createAsyncThunk`는 request의 성공 혹은 실패를 컴포넌트 레벨에서 다루기 위해 `await dispatch(someThunk()).unwrap()` 를 사용할 수 있다.
+-
