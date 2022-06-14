@@ -121,3 +121,51 @@ const postsSlice = createSlice({
 - Action creator는 `extra Reducer`의 키로 자동적으로 사용된다.
 - Thunk 는 프로미스를 리턴할 수도 있다. `createAsyncThunk`는 request의 성공 혹은 실패를 컴포넌트 레벨에서 다루기 위해 `await dispatch(someThunk()).unwrap()` 를 사용할 수 있다.
 -
+
+# Redux 핵심 part6 : Performance and Normalizing Data
+
+## 정리
+
+### Memoized selector로 퍼포먼스를 최적화 할 수 있다.
+
+- 리덕스 툴킷은 `createSelector`함수를 익스포트 하는데, 이걸로 memoized selector들을 만들 수 있다.
+- Memoized seletor는 input selector, output selector를 가진다.
+  - input selector가 리턴하는 값이 달라져야만 다시 계산한다.
+- Memoization은 불필요한 계산을 스킵하고 같은 참조값과 리턴값을 보장할 수 있다.
+
+### Redux를 사용할 때 React component를 최적화 할 수 있는 다양한 패턴이 있다.
+
+- `useSelector` 가 사용하는 객체나 배열의 빈번한 재 생성을 피하라 - 불필요한 리렌더링의 원인이 된다.
+- Memoized selector 함수를 `useSelector`인자로 주어서 렌더링을 최적화 할 수 있다.
+- `useSelector` 는 `shallowEqual`과 같은 대체 비교 함수를 받을 수 있다.
+- `React.memo()`로 감싸진 컴포넌트는 props가 변경 될 때만 리렌더링 된다.
+- 리스트를 렌더링 할 때는
+  - 아이템의 Id들만 갖고 있는 배열을 먼저 읽고, Id를 자식 컴포넌트에 넘겨주고, 자식 안에서 id를 통해 id를 검색하는 방식으로 최적화 시킬 수 있다.
+
+### item을 저장할 때 Normalized state 구조를 추천 한다.
+
+- "Normalization"은 데이터의 중복이 없고, id를 이용한 룩업 테이블에 저장된 아이템들을 유지하는 것을 말한다.
+- Normalized state는 대게 `{ids:[], entities:{}}`와 같은 모양이다.
+
+### Redux Toolkit의 `createEntityAdapter` API는 slice 안에서 normalized data 관리에 도움을 준다.
+
+- 아이템의 id들은 `sortCompare`옵션을 통해서 정렬이 가능하다.
+
+```
+  const postsAdapter = createEntityAdapter({
+  sortComparer: (a, b) => b.date.localeCompare(a.date),
+})
+```
+
+- adapter 객체는 다음고 같은 것들을 포함한다.
+  - `adapter.getInitialState` : 초기값을 정하고 로딩 상태 같은 추가적인 스테이트 필드를 받을 수 있다.
+
+```
+  const initialState = postsAdapter.getInitialState({
+  status: 'idle',
+  error: null,
+})
+```
+
+- 자주 쓰이는 Prebuilt 리듀서를 가진다 : `setAll`,`addMany`,`upsertOne`,`removeMany` 등등
+- `adapter.getSelectors` : `selectAll`, `selectById`같은 selector를 생성한다.
