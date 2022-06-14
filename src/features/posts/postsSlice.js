@@ -1,20 +1,19 @@
-import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit'
+import {
+  createSlice,
+  createAsyncThunk,
+  createSelector,
+  createEntityAdapter,
+} from '@reduxjs/toolkit'
 import { client } from '../../api/client'
 
-/**
- *
- * {
- *  status: 'idle' | 'loading' | 'succeeded' | 'failed',
- *  error: string | null
- * }
- *
- */
+const postsAdapter = createEntityAdapter({
+  sortComparer: (a, b) => b.date.localeCompare(a.date),
+})
 
-const initialState = {
-  posts: [],
-  status: 'idle', // 임의로 기입한 상태 이름
+const initialState = postsAdapter.getInitialState({
+  status: 'idle',
   error: null,
-}
+})
 
 export const fetchPosts = createAsyncThunk('posts/fetchPosts', async () => {
   const response = await client.get('/fakeApi/posts')
@@ -23,8 +22,8 @@ export const fetchPosts = createAsyncThunk('posts/fetchPosts', async () => {
 
 export const addNewPost = createAsyncThunk(
   'posts/addNewPost',
-  async (initalPost) => {
-    const response = await client.post('/fakeApi/posts', initalPost)
+  async (initialPost) => {
+    const response = await client.post('/fakeApi/posts', initialPost)
     return response.data
   }
 )
@@ -33,72 +32,49 @@ const postsSlice = createSlice({
   name: 'posts',
   initialState,
   reducers: {
-    // postAdded: {
-    //   reducer(state, action) {
-    //     state.posts.push(action.payload)
-    //   },
-    //   prepare(title, content, userId) {
-    //     return {
-    //       payload: {
-    //         id: nanoid(),
-    //         date: new Date().toISOString(),
-    //         title,
-    //         content,
-    //         user: userId,
-    //         reactions: {
-    //           thumbsUp: 0,
-    //           hooray: 0,
-    //           heart: 0,
-    //           rocket: 0,
-    //           eyes: 0,
-    //         },
-    //       },
-    //     }
-    //   },
-    // },
-    postUpdated(state, action) {
-      const { id, title, content } = action.payload
-      const existingPost = state.posts.find((post) => post.id === id)
-      if (existingPost) existingPost.title = title
-      existingPost.content = content
-    },
     reactionAdded(state, action) {
       const { postId, reaction } = action.payload
-      const existingPost = state.posts.find((post) => post.id === postId)
+      const existingPost = state.entities[postId]
       if (existingPost) {
         existingPost.reactions[reaction]++
       }
     },
+    postUpdated(state, action) {
+      const { id, title, content } = action.payload
+      const existingPost = state.entities[id]
+      if (existingPost) {
+        existingPost.title = title
+        existingPost.content = content
+      }
+    },
   },
-  extraReducers: {
-    [fetchPosts.pending]: (state, action) => {
-      state.status = 'loading'
-    },
-    [fetchPosts.fulfilled]: (state, action) => {
-      state.status = 'succeeded'
-      // Add any fetched posts to the array
-      state.posts = state.posts.concat(action.payload)
-    },
-    [fetchPosts.rejected]: (state, action) => {
-      state.status = 'failed'
-      state.error = action.error.message
-    },
-    [addNewPost.fulfilled]: (state, action) => {
-      console.log(action.payload)
-      state.posts.push(action.payload)
-    },
+  extraReducers(builder) {
+    builder
+      .addCase(fetchPosts.pending, (state, action) => {
+        state.status = 'loading'
+      })
+      .addCase(fetchPosts.fulfilled, (state, action) => {
+        state.status = 'succeeded'
+        // Add any fetched posts to the array
+        postsAdapter.upsertMany(state, action.payload)
+      })
+      .addCase(fetchPosts.rejected, (state, action) => {
+        state.status = 'failed'
+        state.error = action.error.message
+      })
+      .addCase(addNewPost.fulfilled, postsAdapter.addOne)
   },
 })
 
-// postAdded reducer함수를 만들면 createSlice가 자동으로 같은 이름의 action creator 함수를 만들어줌.
-// 이 action creator를 export하고 UI 컴포넌트에서 Save Post버튼을 클릭 할 때 디스패치 한다.
 export const { postAdded, postUpdated, reactionAdded } = postsSlice.actions
 
 export default postsSlice.reducer
 
-export const selectAllPosts = (state) => state.posts.posts
-export const selectPostById = (state, postId) =>
-  state.posts.posts.find((post) => post.id === postId)
+export const {
+  selectAll: selectAllPosts,
+  selectById: selectPostById,
+  selectIds: selectPostIds,
+} = postsAdapter.getSelectors((state) => state.posts) // 전체 store를 참조하기 때문에 사용하고자 하는 slice를 지정해야함.
 
 export const selectPostsByUser = createSelector(
   [selectAllPosts, (state, userId) => userId],
